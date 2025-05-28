@@ -64,3 +64,54 @@ def transpile_to_cpp(source_code):
     output.append(f"{indent(1)}return 0;")
     output.append("}")
     return '\n'.join(output)
+
+
+def transpile_to_python(source_code):
+    lines = source_code.strip('\n').splitlines()
+    output = []
+    indent_level = 0
+    block_stack = []
+    prev_indent = 0
+
+    for raw_line in lines:
+        line = raw_line.strip()
+        current_indent = get_indent(raw_line)
+
+        while block_stack and current_indent < prev_indent:
+            indent_level -= 1
+            block_stack.pop()
+            prev_indent -= 1
+
+        if line.startswith("let "):
+            var, val = map(str.strip, line[4:].split('=', 1))
+            output.append(f"{indent(indent_level)}{var} = {val}")
+        elif line.startswith("print "):
+            output.append(f"{indent(indent_level)}print({line[6:].strip()})")
+        elif line.startswith("if "):
+            output.append(f"{indent(indent_level)}if {line[3:].strip()}:")
+            block_stack.append("if")
+            indent_level += 1
+            prev_indent = current_indent + 1
+        elif line == "else":
+            indent_level -= 1
+            output.append(f"{indent(indent_level)}else:")
+            indent_level += 1
+            prev_indent = current_indent + 1
+        elif line.lower().startswith("for "):
+            parts = line[4:].split('=')
+            var = parts[0].strip()
+            start, end = map(str.strip, parts[1].replace("to", ",").split(','))
+            output.append(f"{indent(indent_level)}for {var} in range({start}, {end}):")
+            block_stack.append("for")
+            indent_level += 1
+            prev_indent = current_indent + 1
+        elif line.startswith("while "):
+            output.append(f"{indent(indent_level)}while {line[6:].strip()}:")
+            block_stack.append("while")
+            indent_level += 1
+            prev_indent = current_indent + 1
+        else:
+            output.append(f"{indent(indent_level)}# Unsupported: {line}")
+            prev_indent = current_indent
+
+    return '\n'.join(output)
