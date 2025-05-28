@@ -44,3 +44,138 @@ class Lexer:
 
         self.tokens.append(('EOF', None))
         return self.tokens
+
+class Parser:
+    def __init__(self, tokens):
+        self.tokens = tokens
+        self.current = 0
+
+    def peek(self):
+        if self.current < len(self.tokens):
+            return self.tokens[self.current]
+        return ('EOF', None)
+
+    def consume(self, expected_type=None):
+        if self.current >= len(self.tokens):
+            raise SyntaxError("Unexpected end of input")
+        token = self.tokens[self.current]
+        if expected_type and token[0] != expected_type:
+            raise SyntaxError(f"Expected {expected_type}, got {token[0]}")
+        self.current += 1
+        return token
+
+    def match(self, *types):
+        if self.current < len(self.tokens) and self.tokens[self.current][0] in types:
+            self.current += 1
+            return True
+        return False
+
+    def parse(self):
+        statements = []
+        while self.peek()[0] != 'EOF':
+            if self.peek()[0] == 'EOL':
+                self.consume('EOL')
+                continue
+            statements.append(self.parse_statement())
+        return statements
+
+    def parse_block(self):
+        self.consume('INDENT')
+        block = []
+        while True:
+            token = self.peek()[0]
+            if token == 'DEDENT':
+                break
+            if token == 'EOL':
+                self.consume('EOL')
+                continue
+            block.append(self.parse_statement())
+        self.consume('DEDENT')
+        return block
+
+    def parse_statement(self):
+        if self.match('LET'):
+            name = self.consume('IDENTIFIER')[1]
+            self.consume('=')
+            expr = self.parse_expression()
+            self.consume('EOL')
+            return ('ASSIGN', name, expr)
+
+        if self.peek()[0] == 'IDENTIFIER':
+            if self.current + 1 < len(self.tokens) and self.tokens[self.current + 1][0] == '=':
+                name = self.consume('IDENTIFIER')[1]
+                self.consume('=')
+                expr = self.parse_expression()
+                self.consume('EOL')
+                return ('ASSIGN', name, expr)
+
+        if self.match('PRINT'):
+            expr = self.parse_expression()
+            self.consume('EOL')
+            return ('PRINT', expr)
+
+        if self.match('IF'):
+            condition = self.parse_expression()
+            self.consume('EOL')
+            true_branch = self.parse_block()
+            false_branch = []
+            if self.match('ELSE'):
+                self.consume('EOL')
+                false_branch = self.parse_block()
+            return ('IF', condition, true_branch, false_branch)
+
+        if self.match('WHILE'):
+            condition = self.parse_expression()
+            self.consume('EOL')
+            body = self.parse_block()
+            return ('WHILE', condition, body)
+
+        if self.match('FOR'):
+            var = self.consume('IDENTIFIER')[1]
+            self.consume('=')
+            start = self.parse_expression()
+            self.consume('TO')
+            end = self.parse_expression()
+            self.consume('EOL')
+            body = self.parse_block()
+            return ('FOR', var, start, end, body)
+
+        raise SyntaxError(f"Unknown statement at token {self.peek()}")
+
+
+    def parse_expression(self):
+        return self.parse_comparison()
+
+    def parse_comparison(self):
+        expr = self.parse_term()
+        while self.peek()[0] in ('>', '<'):
+            op = self.consume()[0]
+            right = self.parse_term()
+            expr = (op, expr, right)
+        return expr
+
+    def parse_term(self):
+        expr = self.parse_factor()
+        while self.peek()[0] in ('+', '-'):
+            op = self.consume()[0]
+            right = self.parse_factor()
+            expr = (op, expr, right)
+        return expr
+
+    def parse_factor(self):
+        expr = self.parse_unary()
+        while self.peek()[0] in ('*', '/', '%'):
+            op = self.consume()[0]
+            right = self.parse_unary()
+            expr = (op, expr, right)
+        return expr
+
+    def parse_unary(self):
+        return self.parse_primary()
+
+    def parse_primary(self):
+        token = self.consume()
+        if token[0] in ('NUMBER', 'IDENTIFIER'):
+            return token
+        raise SyntaxError(f"Expected number or identifier, got {token[0]}")
+
