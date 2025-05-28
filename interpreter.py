@@ -82,3 +82,28 @@ def run_compiler(source_code, output_widget=None):
     ast = parser.parse()
     interpreter = Interpreter(ast, output_widget)
     interpreter.exec()
+
+class CompilerGUI(QWidget):
+    def __init__(self):
+        run_button = QPushButton("Run")
+        run_button.clicked.connect(self.run_code)
+
+        example_code = """\
+
+"""
+        self.code_editor.setText(example_code)
+
+    def run_code(self):
+        self.output_console.clear()
+        code = self.code_editor.toPlainText()
+        try:
+            run_compiler(code, self.output_console)
+        except Exception as e:
+            self.output_console.append(f"Error: {e}")
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = CompilerGUI()
+    window.show()
+    sys.exit(app.exec())
