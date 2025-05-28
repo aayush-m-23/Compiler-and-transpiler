@@ -198,4 +198,41 @@ class TranspilerGUI(QWidget):
         if path:
             with open(path, 'r', encoding='utf-8') as file:
                 self.input_editor.setPlainText(file.read())
+    
+    def save_output(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Save Output", "", "Text Files (*.txt);;All Files (*)")
+        if path:
+            with open(path, 'w', encoding='utf-8') as file:
+                file.write(self.output_editor.toPlainText())
+
+    def transpile_code(self):
+        source_code = self.input_editor.toPlainText()
+        selected_lang = self.language_selector.currentText()
+
+        if selected_lang == "Select Language":
+            QMessageBox.warning(self, "Language Not Selected", "Please select a language.")
+            return
+
+        try:
+            if selected_lang == "Python":
+                transpiled = transpile_to_python(source_code)
+            elif selected_lang == "C++":
+                transpiled = transpile_to_cpp(source_code)
+            elif selected_lang == "C":
+                transpiled = transpile_to_c(source_code)
+            elif selected_lang == "Java":
+                transpiled = transpile_to_java(source_code)
+            else:
+                transpiled = "// Transpilation not supported for this language."
+
+            self.output_editor.setPlainText(transpiled)
+        except Exception as e:
+            QMessageBox.critical(self, "Transpilation Error", str(e))
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = TranspilerGUI()
+    window.show()
+    sys.exit(app.exec())
 
