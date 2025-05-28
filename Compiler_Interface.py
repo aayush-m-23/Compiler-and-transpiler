@@ -137,3 +137,65 @@ class TranspilerGUI(QWidget):
                 border-radius: 6px;
             }
         """)
+    
+    def add_button(self, label, func, hex_color, layout):
+        btn = QPushButton(label)
+        btn.clicked.connect(func)
+        btn.setCursor(Qt.PointingHandCursor)
+        base_color = QColor(hex_color)
+        btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: qlineargradient(
+                    x1:0, y1:0, x2:0, y2:1,
+                    stop:0 {base_color.lighter(130).name()},
+                    stop:1 {base_color.darker(130).name()}
+                );
+                color: white;
+                border-radius: 10px;
+                padding: 12px 22px;
+                font-size: 15px;
+                border: 1px solid {base_color.darker(150).name()};
+            }}
+            QPushButton:hover {{
+                background-color: qlineargradient(
+                    x1:0, y1:0, x2:0, y2:1,
+                    stop:0 {base_color.lighter(150).name()},
+                    stop:1 {base_color.darker(150).name()}
+                );
+                color: #FFFDE7;
+                border: 1.5px solid {base_color.lighter(180).name()};
+            }}
+            QPushButton:pressed {{
+                background-color: {base_color.darker(170).name()};
+                color: #E0E0E0;
+            }}
+        """)
+        layout.addWidget(btn)
+
+    def compile_and_run(self):
+        code = self.input_editor.toPlainText()
+        try:
+            import io
+            import contextlib
+
+            buffer = io.StringIO()
+            with contextlib.redirect_stdout(buffer):
+                run_compiler(code)
+            self.compiled_output.setPlainText(buffer.getvalue())
+
+        except Exception as e:
+            self.compiled_output.setPlainText(f"Interpreter error: {e}")
+
+    def clear_input(self):
+        self.input_editor.clear()
+
+    def clear_output(self):
+        self.output_editor.clear()
+        self.compiled_output.clear()
+
+    def load_file(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Open File", "", "Code Files (*.txt *.py *.cpp *.java)")
+        if path:
+            with open(path, 'r', encoding='utf-8') as file:
+                self.input_editor.setPlainText(file.read())
+
